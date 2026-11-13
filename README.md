@@ -21,8 +21,8 @@ Veri modeli: [`docs/data-model.md`](docs/data-model.md)
 | `proxy/core.py` — kesme + karar + taint + kısıt uygulama | ✅ |
 | `proxy/events.py` — hash-chain'li JSONL olay kaydı | ✅ |
 | `proxy/server.py` — MCP stdio taşıması | ✅ |
-| `tests/` — 83 test (uçtan uca dahil) | ✅ |
-| Replay komutu | ⬜ |
+| `proxy/replay.py` — politika değişikliği farkı | ✅ |
+| `tests/` — 91 test (uçtan uca dahil) | ✅ |
 | Inspector (Docker sandbox) | ⬜ |
 | UI | ⬜ |
 
@@ -71,11 +71,21 @@ policies/*.yaml
   -- python path/to/mcp_server.py
 ```
 
+## Replay
+
+```bash
+.venv/bin/python -m proxy.replay events/session.jsonl \
+  --policy policies/coding-agent.yaml --workspace /ws
+```
+
+Kaydedilmiş kararlarla yeni politikanın kararlarını karşılaştırır; fark varsa
+çıkış kodu 1 döner (CI'da kullanılabilir), zincir bozuksa 2.
+
 ## Sıradaki adım
 
-`replay` komutu ve Inspector (Docker sandbox + declared/observed diff).
-V1 kabul kriteri karşılandı: 7 olaylık senaryo uçtan uca `deny` üretiyor ve
-olay zinciri doğrulanıyor.
+Inspector: Docker sandbox + declared/observed capability diff → Manifest.
+V1 kabul kriteri karşılandı: 7 olaylık senaryo uçtan uca `deny` üretiyor,
+olay zinciri doğrulanıyor ve aynı politikayla replay sıfır fark veriyor.
 
 ## Etik
 
