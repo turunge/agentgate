@@ -1,0 +1,56 @@
+version: 1
+name: demo-proxy
+description: >
+  Proxy demosu için: bir blog sayfası okumaya izin verir, workspace içi
+  okumayı redaksiyonla serbest bırakır. Dış ağdan içerik girdikten sonra
+  yapılan her egress çağrısı reddedilir (lethal trifecta).
+defaults:
+  decision: deny
+  approval_timeout: deny
+  on_error: deny
+variables:
+  workspace: "${PWD}"
+rules:
+  - id: allow-blog-fetch
+    when:
+      all:
+        - tool.name: fetch
+        - host.in:
+            - "blog.example.com"
+    then: allow
+    reason: "Demo blog kaynağı"
+
+  - id: allow-workspace-read
+    when:
+      all:
+        - capability: fs.read
+        - path.within: "${workspace}"
+    then: allow
+    reason: "Workspace içi okuma"
+
+  - id: redact-secrets
+    when:
+      capability: fs.read
+    then: constrain
+    reason: "Araç çıktısındaki sırlar redakte edilir"
+    action:
+      redact_patterns:
+        - "AKIA[0-9A-Z]{16}"
+        - "sk-[A-Za-z0-9_-]{20,}"
+
+  - id: deny-secret-paths
+    when:
+      any:
+        - path.matches: "**/.ssh/**"
+        - path.matches: "**/.aws/**"
+        - path.matches: "**/.env"
+    then: deny
+    reason: "Kimlik bilgisi dosyası"
+
+  - id: lethal-trifecta
+    when:
+      all:
+        - session.tainted_with: untrusted_web
+        - capability: net.egress
+    then: deny
+    reason: "Güvenilmeyen içerik okunduktan sonra dış ağ çağrısı"

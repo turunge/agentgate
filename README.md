@@ -13,14 +13,17 @@ Veri modeli: [`docs/data-model.md`](docs/data-model.md)
 | Katman | Durum |
 |---|---|
 | JSON Schema sözleşmeleri (5) | ✅ |
-| Örnek politikalar (4) | ✅ |
+| Örnek politikalar (5) | ✅ |
 | `core/schemas.py` — Pydantic modelleri | ✅ |
 | `core/normalize.py` — yol/host/komut normalizasyonu | ✅ |
 | `core/policy.py` — yükleme + değerlendirme motoru | ✅ |
-| `tests/` — 67 test | ✅ |
-| MCP proxy | ⬜ |
+| `proxy/capabilities.py` — araç → capability çıkarımı | ✅ |
+| `proxy/core.py` — kesme + karar + taint + kısıt uygulama | ✅ |
+| `proxy/events.py` — hash-chain'li JSONL olay kaydı | ✅ |
+| `proxy/server.py` — MCP stdio taşıması | ✅ |
+| `tests/` — 83 test (uçtan uca dahil) | ✅ |
+| Replay komutu | ⬜ |
 | Inspector (Docker sandbox) | ⬜ |
-| Event store + replay | ⬜ |
 | UI | ⬜ |
 
 ## Çalıştırma
@@ -39,21 +42,40 @@ core/
   schemas.py     # docs/schemas/*.json ile birebir modeller
   normalize.py   # capability hedefi normalizasyonu
   policy.py      # load_policy / evaluate / decide
+proxy/
+  capabilities.py  # araç adı + argüman -> Capability + risk
+  core.py          # tools/call kesme, karar, taint, redaksiyon
+  events.py        # ULID, hash-chain, JSONL
+  server.py        # stdio köprüsü (python -m proxy.server ... -- <mcp server>)
 tests/
-  test_policy.py    # 13 senaryo + semantik testleri
+  test_policy.py      # 13 senaryo + semantik testleri
   test_normalize.py
-  test_schemas.py   # şema ↔ model ayrışma kontrolü
+  test_schemas.py     # şema ↔ model ayrışma kontrolü
+  test_events.py      # hash-chain + redaksiyon
+  test_proxy_core.py  # karar akışı, taint, kısıtlar
+  test_proxy_e2e.py   # gerçek süreçlerle uçtan uca
 docs/
   data-model.md
   schemas/*.schema.json
 policies/*.yaml
 ```
 
+## Proxy'yi çalıştırma
+
+```bash
+.venv/bin/python -m proxy.server \
+  --policy policies/demo-proxy.yaml \
+  --workspace /ws \
+  --events events/session.jsonl \
+  --allowlist git,ls \
+  -- python path/to/mcp_server.py
+```
+
 ## Sıradaki adım
 
-`proxy/` — MCP stdio taşıması, `tools/call` kesme, `core.policy` ile karar, olay kaydı.
-V1 kabul kriteri: `docs/data-model.md` §6'daki 7 olaylık senaryonun uçtan uca `deny`
-üretmesi ve replay'in aynı sonucu vermesi.
+`replay` komutu ve Inspector (Docker sandbox + declared/observed diff).
+V1 kabul kriteri karşılandı: 7 olaylık senaryo uçtan uca `deny` üretiyor ve
+olay zinciri doğrulanıyor.
 
 ## Etik
 
