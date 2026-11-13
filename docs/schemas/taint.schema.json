@@ -3,6 +3,26 @@
   "$id": "https://agentgate.dev/schemas/taint.schema.json",
   "title": "Taint",
   "description": "İçerik kökeni (provenance) modeli. Proxy, gördüğü her bağlam parçasını etiketler; giden araç argümanları bu etiketlerle eşleştirilir.",
+  "oneOf": [
+    { "$ref": "#/$defs/TaintRef" },
+    { "$ref": "#/$defs/ContextSegment" }
+  ],
+  "examples": [
+    {
+      "segment_id": "01J8Z4Q2M9X7K3V5N1P8R6T400",
+      "trust": "untrusted_web",
+      "source_ref": "https://blog.example.com/post",
+      "match": "shingle",
+      "score": 0.91
+    },
+    {
+      "segment_id": "01J8Z4Q2M9X7K3V5N1P8R6T400",
+      "trust": "untrusted_web",
+      "source_ref": "https://blog.example.com/post",
+      "content_sha256": "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "length": 1420
+    }
+  ],
   "$defs": {
     "TrustLabel": {
       "type": "string",

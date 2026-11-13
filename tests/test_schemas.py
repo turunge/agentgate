@@ -8,7 +8,7 @@ import yaml
 from jsonschema import Draft202012Validator
 from referencing import Registry, Resource
 
-from core.schemas import Event, Policy
+from core.schemas import ContextSegment, Event, Manifest, Policy, TaintRef
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMAS_DIR = ROOT / "docs" / "schemas"
@@ -69,3 +69,22 @@ def test_pydantic_event_rejects_tool_call_without_capability():
 def test_pydantic_policy_accepts_all_policy_files():
     for path in sorted(POLICIES_DIR.glob("*.yaml")):
         Policy.model_validate(yaml.safe_load(path.read_text(encoding="utf-8")))
+
+
+def test_pydantic_manifest_accepts_schema_example():
+    example = SCHEMAS["manifest.schema.json"]["examples"][0]
+    manifest = Manifest.model_validate(example)
+    assert manifest.confidence == 0.95
+    assert len(manifest.findings) == 1
+    assert manifest.findings[0].severity == "critical"
+
+
+def test_pydantic_taint_accepts_schema_examples():
+    taint_example = SCHEMAS["taint.schema.json"]["examples"][0]
+    ref = TaintRef.model_validate(taint_example)
+    assert ref.match == "shingle"
+
+    segment_example = SCHEMAS["taint.schema.json"]["examples"][1]
+    segment = ContextSegment.model_validate(segment_example)
+    assert segment.length == 1420
+

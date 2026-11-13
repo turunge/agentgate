@@ -17,7 +17,7 @@ Veri modeli: [`docs/data-model.md`](docs/data-model.md)
 | `core/schemas.py` — Pydantic modelleri | ✅ |
 | `core/normalize.py` — yol/host/komut normalizasyonu | ✅ |
 | `core/policy.py` — yükleme + değerlendirme motoru | ✅ |
-| `tests/` — 63 test | ✅ |
+| `tests/` — 67 test | ✅ |
 | MCP proxy | ⬜ |
 | Inspector (Docker sandbox) | ⬜ |
 | Event store + replay | ⬜ |

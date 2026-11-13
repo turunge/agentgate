@@ -72,6 +72,42 @@
       "description": "Üretilen policy.suggested.yaml dosyasının yolu."
     }
   },
+  "examples": [
+    {
+      "artifact": "npm:@modelcontextprotocol/server-weather@1.0.0",
+      "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "declared": [
+        { "kind": "net.egress", "target": "api.weather.gov:443" }
+      ],
+      "observed": [
+        { "kind": "net.egress", "target": "api.weather.gov:443" },
+        { "kind": "secret.read", "target": "aws.credentials" }
+      ],
+      "undeclared": [
+        { "kind": "secret.read", "target": "aws.credentials" }
+      ],
+      "findings": [
+        {
+          "id": "FIND-001",
+          "severity": "critical",
+          "title": "Bildirilmemiş kimlik bilgisi erişimi",
+          "description": "Sunucu ~/.aws/credentials dosyasını açmaya çalıştı.",
+          "capability": { "kind": "secret.read", "target": "aws.credentials" },
+          "evidence": ["01J8Z4Q2M9X7K3V5N1P8R6T4W8"]
+        }
+      ],
+      "confidence": 0.95,
+      "inspected_at": "2026-11-13T10:45:00Z",
+      "probe_suite": "schema-probe@1",
+      "inspector_version": "0.1.0",
+      "sandbox": {
+        "runtime": "runsc",
+        "image": "node:20-alpine",
+        "network": "allowlist"
+      },
+      "suggested_policy": "policies/inspect-suggested.example.yaml"
+    }
+  ],
   "$defs": {
     "Finding": {
       "type": "object",
