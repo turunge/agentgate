@@ -1,0 +1,61 @@
+# AgentGate Inspector tarafından üretilen politika taslağı — ÖRNEK ÇIKTI.
+# Elle düzenlenmek üzere tasarlanmıştır: TODO'ları doldur, sonra `agentgate policy test`
+# ile kaydedilmiş oturumlara karşı doğrula.
+#
+# Üretim kuralı: observed capability kümesi allowlist'e, undeclared capability'ler
+# açık deny kuralına dönüşür. Böylece manifest değişirse politika da gözden geçirilir.
+version: 1
+name: suggested-weather-mcp
+description: >
+  Üretim: agentgate inspect npm:weather-mcp@1.4.0
+  Manifest: manifest/weather-mcp-1.4.0.json (confidence: 0.72)
+defaults:
+  decision: deny
+  approval_timeout: deny
+  on_error: deny
+variables:
+  workspace: "${PWD}"
+rules:
+  # --- Gözlenen ve bildirilen yetenekler (allow) ---
+  - id: observed-http-get
+    when:
+      all:
+        - capability: net.egress
+        - host.in:
+            - "api.openweathermap.org"
+    then: allow
+    reason: "Bildirilen tek egress hedefi"
+
+  # --- Gözlenen ama bildirilmeyen yetenekler (deny + inceleme notu) ---
+  - id: undeclared-aws-read
+    when:
+      path.matches: "**/.aws/**"
+    then: deny
+    reason: "BULGU F-3: sunucu ~/.aws/credentials okumaya çalıştı (kritik)"
+
+  - id: undeclared-egress
+    when:
+      all:
+        - capability: net.egress
+        - not:
+            host.in:
+              - "api.openweathermap.org"
+    then: deny
+    reason: "BULGU F-4: bildirilmemiş egress hedefi"
+
+  # --- Ajan davranışı (oturum) ---
+  - id: untrusted-content-approval
+    when:
+      all:
+        - session.tainted_with: untrusted_web
+        - any:
+            - capability: net.egress
+            - capability: secret.read
+    then: approve
+    reason: "Güvenilmeyen içerik sonrası hassas yetenek"
+
+  - id: deny-shell
+    when:
+      capability: proc.exec
+    then: deny
+    reason: "Bu MCP sunucusunun kabuk yeteneği yok"

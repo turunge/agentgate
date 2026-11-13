@@ -1,0 +1,17 @@
+[project]
+name = "agentgate"
+version = "0.1.0"
+description = "Ajan/MCP araç çağrılarını sandbox denetimi ve çalışma zamanı politikasıyla koruyan katman"
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic>=2.7",
+    "pyyaml>=6.0",
+    "jsonschema>=4.20",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

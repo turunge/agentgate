@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentgate.dev/schemas/taint.schema.json",
+  "title": "Taint",
+  "description": "İçerik kökeni (provenance) modeli. Proxy, gördüğü her bağlam parçasını etiketler; giden araç argümanları bu etiketlerle eşleştirilir.",
+  "$defs": {
+    "TrustLabel": {
+      "type": "string",
+      "enum": ["user", "system", "tool", "untrusted_web", "file"],
+      "description": "user: kullanıcının doğrudan mesajı. system: yapılandırma. tool: araç çıktısı. untrusted_web: dış kaynaktan gelen içerik. file: yerel dosya."
+    },
+    "TaintRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["segment_id", "trust", "source_ref", "match", "score"],
+      "properties": {
+        "segment_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Kaynak bağlam parçasının kimliği. Aynı oturumdaki bir context_inject olayının id'si."
+        },
+        "trust": { "$ref": "#/$defs/TrustLabel" },
+        "source_ref": {
+          "type": "string",
+          "description": "İnsan okunur kaynak: URL, dosya yolu, '<tool> çıktısı'."
+        },
+        "match": {
+          "type": "string",
+          "enum": ["exact", "shingle", "embedding"],
+          "description": "Tespitin yöntemi. exact: birebir alt dize. shingle: n-gram örtüşmesi. embedding: vektör benzerliği (v2)."
+        },
+        "score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Eşleşme güveni. exact=1.0, shingle ve embedding için eşik üstü değer."
+        }
+      }
+    },
+    "ContextSegment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["segment_id", "trust", "source_ref", "content_sha256"],
+      "properties": {
+        "segment_id": { "type": "string" },
+        "trust": { "$ref": "#/$defs/TrustLabel" },
+        "source_ref": { "type": "string" },
+        "content_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "İçeriğin özeti. Ham içerik saklanmaz; eşleştirme için normalize edilmiş shingle indeksi tutulur."
+        },
+        "length": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

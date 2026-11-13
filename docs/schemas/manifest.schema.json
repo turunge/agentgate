@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentgate.dev/schemas/manifest.schema.json",
+  "title": "CapabilityManifest",
+  "description": "Inspector'ın çıktısı: bir artefaktın bildirdiği ve gerçekte sergilediği yetenekler, farkları ve bulguları.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "artifact",
+    "digest",
+    "declared",
+    "observed",
+    "undeclared",
+    "findings",
+    "confidence",
+    "inspected_at",
+    "probe_suite",
+    "inspector_version"
+  ],
+  "properties": {
+    "artifact": {
+      "type": "string",
+      "description": "Kaynak tanımı: 'npm:@scope/pkg@1.2.3', 'git:https://...@sha', 'path:./server'."
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "Artefaktın sha256 özeti."
+    },
+    "declared": {
+      "type": "array",
+      "items": { "$ref": "capability.schema.json" },
+      "description": "Statik analizden çıkarılan, belgelenmiş yetenekler."
+    },
+    "observed": {
+      "type": "array",
+      "items": { "$ref": "capability.schema.json" },
+      "description": "Sandbox çalıştırmasında gözlenen yetenekler."
+    },
+    "undeclared": {
+      "type": "array",
+      "items": { "$ref": "capability.schema.json" },
+      "description": "observed - declared. Ana bulgu sinyali."
+    },
+    "findings": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Finding" }
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Probe kapsamı ve sensör kalitesine dayalı güven. Düşük güven UI'da açıkça gösterilir."
+    },
+    "inspected_at": { "type": "string", "format": "date-time" },
+    "probe_suite": {
+      "type": "string",
+      "description": "Kullanılan probe setinin adı ve sürümü, ör. 'schema-probe@1'."
+    },
+    "inspector_version": { "type": "string" },
+    "sandbox": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "runtime": { "type": "string", "description": "runc | runsc | firecracker" },
+        "image": { "type": "string" },
+        "network": { "type": "string", "enum": ["none", "allowlist"] }
+      }
+    },
+    "suggested_policy": {
+      "type": ["string", "null"],
+      "description": "Üretilen policy.suggested.yaml dosyasının yolu."
+    }
+  },
+  "$defs": {
+    "Finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "severity", "title", "description"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[A-Z]+-[0-9]+$" },
+        "severity": {
+          "type": "string",
+          "enum": ["info", "low", "medium", "high", "critical"]
+        },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "capability": {
+          "oneOf": [
+            { "$ref": "capability.schema.json" },
+            { "type": "null" }
+          ]
+        },
+        "evidence": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Olay id'leri veya ham sensör kayıtlarına referanslar."
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,72 @@
+version: 1
+name: readonly-research
+description: >
+  Web araştırması yapan ajanlar için: okuma ve allowlist'li egress serbest,
+  yazma ve kabuk yok. Güvenilmeyen içerik okunduktan sonra allowlist dışına
+  çıkan her çağrı onay ister (lethal trifecta).
+defaults:
+  decision: deny
+  approval_timeout: deny
+  on_error: deny
+variables:
+  workspace: "${PWD}"
+rules:
+  - id: allow-http-get
+    when:
+      all:
+        - tool.name.matches: "http.*"
+        - host.in:
+            - "*.wikipedia.org"
+            - "*.github.com"
+            - "docs.python.org"
+    then: allow
+    reason: "Allowlist'teki kaynaklardan GET"
+
+  - id: allow-workspace-read
+    when:
+      all:
+        - capability: fs.read
+        - path.within: "${workspace}"
+    then: allow
+    reason: "Workspace içi okuma"
+
+  - id: deny-secret-paths
+    when:
+      any:
+        - path.matches: "**/.ssh/**"
+        - path.matches: "**/.aws/**"
+        - path.matches: "**/.env"
+    then: deny
+    reason: "Kimlik bilgisi dosyası"
+
+  - id: deny-any-write
+    when:
+      capability: fs.write
+    then: deny
+    reason: "Araştırma ajanı dosya yazamaz"
+
+  - id: deny-shell
+    when:
+      capability: proc.exec
+    then: deny
+    reason: "Araştırma ajanı kabuk çalıştıramaz"
+
+  - id: lethal-trifecta
+    when:
+      all:
+        - session.tainted_with: untrusted_web
+        - capability: net.egress
+    then: approve
+    reason: "Güvenilmeyen içerik sonrası dış ağ çağrısı"
+    action:
+      approval_channel: ui
+
+  - id: redact-secrets-in-output
+    when:
+      capability: fs.read
+    then: constrain
+    reason: "Çıktıda sır redaksiyonu"
+    action:
+      redact_patterns:
+        - "AKIA[0-9A-Z]{16}"
+        - "sk-[A-Za-z0-9_-]{20,}"

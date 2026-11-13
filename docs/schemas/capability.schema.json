@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentgate.dev/schemas/capability.schema.json",
+  "title": "Capability",
+  "description": "Bir aracın gerçekleştirebileceği tek bir yetenek. Inspector tarafından 'observed', statik analiz tarafından 'declared' olarak üretilir; proxy çalışma anında aynı şemayı kullanır.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind", "target"],
+  "properties": {
+    "kind": {
+      "type": "string",
+      "enum": [
+        "fs.read",
+        "fs.write",
+        "net.egress",
+        "net.listen",
+        "proc.exec",
+        "env.read",
+        "secret.read",
+        "llm.call",
+        "clipboard",
+        "ipc"
+      ],
+      "description": "Yeteneğin sınıfı. Politika kuralları bu değer üzerinden eşleşir."
+    },
+    "target": {
+      "type": "string",
+      "minLength": 1,
+      "description": "kind'a göre değişen hedef: fs.* için glob yol, net.* için host[:port], proc.exec için komut adı, env.read için değişken adı, secret.read için sır sınıfı."
+    },
+    "constraints": {
+      "type": "object",
+      "description": "Yeteneğe özgü ek sınırlar. Örnek: {\"methods\":[\"GET\"],\"max_bytes\":1048576} veya {\"recursive\":false}.",
+      "additionalProperties": true
+    }
+  },
+  "examples": [
+    { "kind": "fs.read", "target": "/home/user/project/**" },
+    { "kind": "net.egress", "target": "api.example.com:443", "constraints": { "methods": ["GET"] } },
+    { "kind": "secret.read", "target": "aws.credentials" }
+  ]
+}

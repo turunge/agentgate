@@ -1,0 +1,56 @@
+version: 1
+name: default-deny
+description: >
+  Başlangıç noktası. Bilinmeyen her araç ve yetenek reddedilir; yalnızca
+  workspace içi okuma açıktır ve çıktıdaki sırlar redakte edilir.
+defaults:
+  decision: deny
+  approval_timeout: deny
+  on_error: deny
+variables:
+  workspace: "${PWD}"
+rules:
+  - id: allow-workspace-read
+    when:
+      all:
+        - capability: fs.read
+        - path.within: "${workspace}"
+    then: allow
+    reason: "Workspace içi okuma"
+
+  - id: deny-secret-paths
+    when:
+      any:
+        - path.matches: "**/.ssh/**"
+        - path.matches: "**/.aws/**"
+        - path.matches: "**/.config/gcloud/**"
+        - path.matches: "**/.env"
+        - path.matches: "**/.npmrc"
+        - path.matches: "**/.git-credentials"
+    then: deny
+    reason: "Kimlik bilgisi veya sır içeren dosya"
+
+  - id: deny-env-secrets
+    when:
+      all:
+        - capability: env.read
+        - env.name.in:
+            - AWS_SECRET_ACCESS_KEY
+            - AWS_SESSION_TOKEN
+            - OPENAI_API_KEY
+            - ANTHROPIC_API_KEY
+            - GITHUB_TOKEN
+    then: deny
+    reason: "Sır niteliğindeki ortam değişkeni"
+
+  - id: redact-secrets-in-output
+    when:
+      capability: fs.read
+    then: constrain
+    reason: "Araç çıktısındaki sır kalıpları redakte edilir"
+    action:
+      redact_patterns:
+        - "AKIA[0-9A-Z]{16}"
+        - "sk-[A-Za-z0-9_-]{20,}"
+        - "ghp_[A-Za-z0-9]{36}"
+        - "-----BEGIN [A-Z ]*PRIVATE KEY-----"

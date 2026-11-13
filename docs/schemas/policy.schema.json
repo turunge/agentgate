@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentgate.dev/schemas/policy.schema.json",
+  "title": "Policy",
+  "description": "AgentGate politika dosyası. Yetkilendirme sırası: deny > approve > allow. Eşitlikte rule_id alfabetik. 'constrain' yetki vermez; eşleştiğinde kısıtlarını kazanan karara ekler. Varsayılan fail-closed.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "rules"],
+  "properties": {
+    "version": { "type": "integer", "const": 1 },
+    "name": { "type": "string" },
+    "description": { "type": "string" },
+    "defaults": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "decision": { "$ref": "#/$defs/decision" },
+        "approval_timeout": { "$ref": "#/$defs/decision" },
+        "on_error": { "type": "string", "enum": ["deny", "approve"] }
+      }
+    },
+    "variables": {
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "description": "Politika içinde ${ad} olarak kullanılan değerler, ör. workspace."
+    },
+    "rules": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/rule" }
+    }
+  },
+  "$defs": {
+    "decision": {
+      "type": "string",
+      "enum": ["allow", "deny", "approve"],
+      "description": "Yetkilendirme sonucu. defaults.decision bu kümeden olmalıdır."
+    },
+    "ruleOutcome": {
+      "type": "string",
+      "enum": ["allow", "deny", "approve", "constrain"],
+      "description": "Kuralın çıktısı. 'constrain' bir yetkilendirme kararı değildir: yalnızca başka bir kuralın verdiği allow/approve kararına kısıt ekler; tek başına eşleşirse hiçbir şeyi yetkilendirmez."
+    },
+    "rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "when", "then", "reason"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+          "description": "Kararlarda ve denetim kaydında referans verilen kimlik."
+        },
+        "when": { "$ref": "#/$defs/condition" },
+        "then": { "$ref": "#/$defs/ruleOutcome" },
+        "reason": {
+          "type": "string",
+          "minLength": 3,
+          "description": "UI'da gösterilecek insan dili gerekçe."
+        },
+        "action": {
+          "type": "object",
+          "description": "then=constrain veya approve için ek davranış.",
+          "additionalProperties": false,
+          "properties": {
+            "redact_patterns": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "rewrite_host": { "type": "string" },
+            "clamp_path": { "type": "string" },
+            "approval_channel": { "type": "string", "enum": ["ui", "cli", "webhook"] }
+          }
+        }
+      }
+    },
+    "condition": {
+      "type": "object",
+      "description": "Özyinelemeli koşul. all/any/not birleştiricileri ve yaprak yüklemler. Bilinmeyen bir yüklem kullanılırsa politika yüklenmez (fail-closed).",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "all": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/condition" }
+        },
+        "any": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/condition" }
+        },
+        "not": { "$ref": "#/$defs/condition" },
+        "capability": {
+          "type": "string",
+          "enum": [
+            "fs.read",
+            "fs.write",
+            "net.egress",
+            "net.listen",
+            "proc.exec",
+            "env.read",
+            "secret.read",
+            "llm.call",
+            "clipboard",
+            "ipc"
+          ]
+        },
+        "tool.name": { "type": "string" },
+        "tool.name.matches": { "type": "string", "description": "Glob deseni." },
+        "path.within": { "type": "string", "description": "${workspace} gibi değişken alabilir." },
+        "path.matches": { "type": "string", "description": "Glob, ör. '**/.ssh/**'." },
+        "host.in": {
+          "oneOf": [
+            { "type": "array", "items": { "type": "string" } },
+            { "type": "string" }
+          ]
+        },
+        "command.in_allowlist": { "type": "boolean" },
+        "env.name.in": { "type": "array", "items": { "type": "string" } },
+        "session.tainted_with": {
+          "type": "string",
+          "enum": ["user", "system", "tool", "untrusted_web", "file"]
+        },
+        "rate.gt": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Aynı araç için son 60 saniyedeki çağrı sayısı bundan büyükse."
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "version": 1,
+      "name": "minimal",
+      "defaults": { "decision": "deny", "approval_timeout": "deny", "on_error": "deny" },
+      "rules": [
+        {
+          "id": "secrets-guard",
+          "when": { "path.matches": "**/.aws/**" },
+          "then": "deny",
+          "reason": "Kimlik bilgisi dosyası"
+        }
+      ]
+    }
+  ]
+}
